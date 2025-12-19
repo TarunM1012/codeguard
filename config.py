@@ -17,3 +17,4 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 # GitHub settings (will add later)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "your_webhook_secret")
