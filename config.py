@@ -10,7 +10,11 @@ AVAILABLE_MODELS = [
     "qwen2.5-coder:7b"
 ]
 
-DEFAULT_MODEL = "deepseek-coder:6.7b"
+DEFAULT_CONFIG = {
+    "models": ["deepseek"],  # Can be ["deepseek"], ["codellama"], ["qwen"], or ["deepseek", "codellama", "qwen"]
+    "consensus_threshold": 2,  # For ensemble: how many models must agree
+    "mode": "single"  # "single" or "ensemble"
+}
 
 # Ollama settings
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")

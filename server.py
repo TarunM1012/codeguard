@@ -67,6 +67,7 @@ async def github_webhook(request: Request):
     # Extract PR info
     pr_number = payload["pull_request"]["number"]
     repo = payload["repository"]["full_name"]
+    commit_id = payload["pull_request"]["head"]["sha"]
     
     print(f"\n New PR event: {repo} #{pr_number}")
     
@@ -105,12 +106,31 @@ List ONLY critical issues. Be concise."""
             
             analysis = ollama.generate("deepseek-coder:6.7b", prompt)
             
-            analyses.append({
-                "file": file['filename'],
-                "additions": file['additions'],
-                "deletions": file['deletions'],
-                "analysis": analysis
-            })
+            # Post comment to GitHub
+            comment_body = f"""## CodeGuard Analysis
+
+**File:** `{file['filename']}`
+
+{analysis}
+
+---
+*Powered by DeepSeek Coder 6.7B*"""
+            
+            try:
+                github.post_pr_comment(repo, pr_number, comment_body)
+                print(f"    Posted comment for {file['filename']}")
+                
+                analyses.append({
+                    "file": file['filename'],
+                    "comment_posted": True
+                })
+            except Exception as e:
+                print(f"    Failed to post comment: {e}")
+                analyses.append({
+                    "file": file['filename'],
+                    "comment_posted": False,
+                    "error": str(e)
+                })
         
         return {
             "status": "analyzed",

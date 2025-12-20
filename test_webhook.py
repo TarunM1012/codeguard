@@ -1,15 +1,17 @@
-#TEST FILE TO CHECK SERVER.PY
 import requests
 import json
 
-# Simulate GitHub webhook
+# More complete webhook payload
 payload = {
     "action": "opened",
     "pull_request": {
-        "number": 1,  # Your PR number
+        "number": 2,
+        "head": {
+            "sha": "abc123def456"  # Added this!
+        }
     },
     "repository": {
-        "full_name": "TarunM1012/AI-stock-report-generator"  # Your repo
+        "full_name": "TarunM1012/AI-stock-report-generator"
     }
 }
 

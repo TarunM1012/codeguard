@@ -32,21 +32,34 @@ class OllamaClient:
 #Testing
         
 if __name__ == "__main__":
+    from config import AVAILABLE_MODELS
+    
     client = OllamaClient()
-
-    #Check connection
+    
+    # Check connection
     if not client.test_connection():
-        print("Ollama server is not running. Start with : ollama serve")
+        print("Ollama not running! Start it with: ollama serve")
         exit(1)
-
-    print("Ollama server is running.")
-
-    #Test prompt
+    
+    print("Ollama connected!\n")
+    
+    # Test all models
     test_code = """
-def devide(a,b):
-    return a / b"""
+def divide(a, b):
+    return a / b
+"""
+    
+    prompt = f"""You are a code reviewer. Find bugs in this code:
 
-    prompt = f"""You are a expert code reviewerFind the bug in the following code:\n{test_code}\n List any issues."""
-    print("Testing DeepSeek Coder...")
-    response = client.generate("deepseek-coder:6.7b", prompt)
-    print(response)
+{test_code}
+
+List issues in one line."""
+    
+    for name, model in AVAILABLE_MODELS.items():
+        print(f"Testing {name} ({model})...")
+        try:
+            response = client.generate(model, prompt)
+            print(f"   Response: {response[:100]}...")
+            print(f"   {name} works!\n")
+        except Exception as e:
+            print(f"   {name} failed: {e}\n")
