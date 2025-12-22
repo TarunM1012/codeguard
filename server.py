@@ -2,12 +2,13 @@ from fastapi import FastAPI, Request
 from ollama_client import OllamaClient
 from github_client import GitHubClient
 from diff_parser import extract_added_code
-
+from multi_model_analyzer import MultiModelAnalyzer
 import json
 
 app = FastAPI()
 ollama = OllamaClient()
 github = GitHubClient()
+analyzer = MultiModelAnalyzer()
 
 @app.get("/")
 def home():
@@ -67,9 +68,13 @@ async def github_webhook(request: Request):
     # Extract PR info
     pr_number = payload["pull_request"]["number"]
     repo = payload["repository"]["full_name"]
-    commit_id = payload["pull_request"]["head"]["sha"]
     
-    print(f"\n New PR event: {repo} #{pr_number}")
+    try:
+        commit_id = payload["pull_request"]["head"]["sha"]
+    except KeyError:
+        commit_id = "unknown"
+    
+    print(f"\n New PR event: {repo} #{pr_number} (commit: {commit_id[:7]})")
     
     # Get changed files
     try:
@@ -94,38 +99,48 @@ async def github_webhook(request: Request):
             
             print(f"  Analyzing {file['filename']}...")
             
-            # Analyze with Ollama
-            prompt = f"""You are a code reviewer. Analyze this NEW code for bugs and security issues:
-
-File: {file['filename']}
-```
-{new_code}
-```
-
-List ONLY critical issues. Be concise."""
+            # Choose analysis mode based on config
+            mode = "single"  # TODO: Make this configurable later
             
-            analysis = ollama.generate("deepseek-coder:6.7b", prompt)
+            if mode == "single":
+                result = analyzer.analyze_single(new_code, file['filename'], "deepseek")
+                analysis = result['analysis']
+                model_info = f"Model: {result['model']}"
+            else:
+                # Ensemble mode
+                result = analyzer.analyze_ensemble(new_code, file['filename'])
+                
+                # Get consensus issues
+                consensus = analyzer.find_consensus(result['results'], threshold=2)
+                
+                if consensus:
+                    analysis = "**Consensus Issues (2+ models agree):**\n\n" + "\n".join(f"• {issue}" for issue in consensus)
+                else:
+                    analysis = "No consensus issues found. Individual model results varied."
+                
+                model_info = f"Models: {', '.join(result['models'])}"
             
             # Post comment to GitHub
-            comment_body = f"""## CodeGuard Analysis
+            comment_body = f"""##  CodeGuard Analysis
 
-**File:** `{file['filename']}`
+**File:** `{file['filename']}`  
+**{model_info}**
 
 {analysis}
 
 ---
-*Powered by DeepSeek Coder 6.7B*"""
+*Powered by CodeGuard Multi-Model System*"""
             
             try:
                 github.post_pr_comment(repo, pr_number, comment_body)
-                print(f"    Posted comment for {file['filename']}")
+                print(f"     Posted comment for {file['filename']}")
                 
                 analyses.append({
                     "file": file['filename'],
                     "comment_posted": True
                 })
             except Exception as e:
-                print(f"    Failed to post comment: {e}")
+                print(f"     Failed to post comment: {e}")
                 analyses.append({
                     "file": file['filename'],
                     "comment_posted": False,
@@ -141,7 +156,7 @@ List ONLY critical issues. Be concise."""
         }
     
     except Exception as e:
-        print(f"Error: {e}")
+        print(f" Error: {e}")
         return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":

@@ -96,6 +96,6 @@ if __name__ == "__main__":
             pr_number, 
             "**CodeGuard Test**: This is an automated test comment!"
         )
-        print(f"✅ Comment posted! View at: {result['html_url']}")
+        print(f" Comment posted! View at: {result['html_url']}")
     except Exception as e:
         print(f"Error: {e}")
