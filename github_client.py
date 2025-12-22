@@ -1,5 +1,6 @@
 import requests
 from config import GITHUB_TOKEN
+from config import TEST_REPO, TEST_PR
 
 #Creating a "client" object to interact with the GitHub API
 class GitHubClient:
@@ -63,8 +64,8 @@ class GitHubClient:
 if __name__ == "__main__": 
     client = GitHubClient()
 
-    repo = "TarunM1012/AI-stock-report-generator"
-    pr_number = 1
+    repo = TEST_REPO
+    pr_number = TEST_PR
 
     # TEST 1: Fetch PR files (original test)
     print("=" * 50)

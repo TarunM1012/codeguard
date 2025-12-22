@@ -1,17 +1,18 @@
 import requests
 import json
+from config import TEST_REPO, TEST_PR
 
 # More complete webhook payload
 payload = {
     "action": "opened",
     "pull_request": {
-        "number": 2,
+        "number": TEST_PR,
         "head": {
             "sha": "abc123def456"  # Added this!
         }
     },
     "repository": {
-        "full_name": "TarunM1012/AI-stock-report-generator"
+        "full_name": TEST_REPO
     }
 }
 
