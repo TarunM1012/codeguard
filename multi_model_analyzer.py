@@ -1,6 +1,5 @@
 from ollama_client import OllamaClient
 from config import AVAILABLE_MODELS
-from server import threshold
 
 class MultiModelAnalyzer:
     def __init__(self):
