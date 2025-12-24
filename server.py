@@ -122,7 +122,24 @@ async def github_webhook(request: Request):
                 consensus = analyzer.find_consensus(result['results'], threshold=2)
                 
                 if consensus:
-                    analysis = "**Consensus Issues (2+ models agree):**\n\n" + "\n".join(f"• {issue}" for issue in consensus)
+                    analysis = "**Consensus Issues (2+ models agree):**\n\n"
+                    for item in consensus:
+                        # Handle both dict and object formats
+                        if isinstance(item, dict):
+                            category = item.get('category', 'Unknown')
+                            models_list = item.get('models', [])
+                            count = item.get('count', 0)
+                            example = item.get('example', '')
+                        else:
+                            # Fallback for string representation
+                            category = str(item)
+                            models_list = []
+                            count = 0
+                            example = ''
+                        
+                        models_str = ", ".join(models_list)
+                        analysis += f"• **{category}** ({count}/3 models: {models_str})\n"
+                        analysis += f"  _{example}_\n\n"
                 else:
                     analysis = "No consensus issues found. Individual model results varied."
                 
