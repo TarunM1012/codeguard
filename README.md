@@ -270,7 +270,7 @@ MIT License
 Tarun Modekurty  
 
 
-**Links**: [GitHub](https://github.com/TarunM1012) | [LinkedIn](https://linkedin.com/in/tarunmodekurty)
+**Links**: [GitHub](https://github.com/TarunM1012) | [LinkedIn](https://linkedin.com/in/tarun-modekurty)
 
 ---
 
