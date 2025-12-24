@@ -171,6 +171,7 @@ codeguard/
 ├── diff_parser.py            # PR diff extraction
 ├── ollama_client.py          # Local model interface
 ├── config.py                 # Configuration
+├── test_webhook.py           # Local testing script
 └── requirements.txt          # Dependencies
 ```
 
