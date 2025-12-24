@@ -3,6 +3,7 @@ from ollama_client import OllamaClient
 from github_client import GitHubClient
 from diff_parser import extract_added_code
 from multi_model_analyzer import MultiModelAnalyzer
+from config import ANALYSIS_MODE
 import json
 
 app = FastAPI()
@@ -100,7 +101,7 @@ async def github_webhook(request: Request):
             print(f"  Analyzing {file['filename']}...")
             
             # Choose analysis mode based on config
-            mode = "single"  # TODO: Make this configurable later
+            mode = ANALYSIS_MODE  # TODO: Make this configurable later
             
             if mode == "single":
                 result = analyzer.analyze_single(new_code, file['filename'], "deepseek")
@@ -109,6 +110,13 @@ async def github_webhook(request: Request):
             else:
                 # Ensemble mode
                 result = analyzer.analyze_ensemble(new_code, file['filename'])
+                
+                # DEBUG: Print what each model said
+                print("\n  === ENSEMBLE RESULTS ===")
+                for model, analysis in result['results'].items():
+                    print(f"\n  {model.upper()}:")
+                    print(f"  {analysis[:300]}...")  # First 300 chars
+                print("\n  === END RESULTS ===\n")
                 
                 # Get consensus issues
                 consensus = analyzer.find_consensus(result['results'], threshold=2)

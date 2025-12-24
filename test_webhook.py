@@ -2,13 +2,13 @@ import requests
 import json
 from config import TEST_REPO, TEST_PR
 
-# More complete webhook payload
+# Complete webhook payload
 payload = {
     "action": "opened",
     "pull_request": {
         "number": TEST_PR,
         "head": {
-            "sha": "abc123def456"  # Added this!
+            "sha": "abc123def456" 
         }
     },
     "repository": {

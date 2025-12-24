@@ -7,7 +7,7 @@ load_dotenv()
 AVAILABLE_MODELS = {
     "deepseek": "deepseek-coder:6.7b",
     "codellama": "codellama:7b", 
-    "qwen2.5-coder": "qwen2.5-coder:7b"
+    "qwen": "qwen2.5-coder:7b"
 }
 
 DEFAULT_CONFIG = {
@@ -18,9 +18,10 @@ DEFAULT_CONFIG = {
 
 # Ollama settings
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+ANALYSIS_MODE = os.getenv("ANALYSIS_MODE", "single")
 
 # GitHub settings (will add later)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "your_webhook_secret")
-TEST_REPO = os.getenv("TEST_REPO")
-TEST_PR = os.getenv("TEST_PR")
+TEST_REPO = os.getenv("TEST_REPO", "TarunM1012/codeguard-testing")
+TEST_PR = int(os.getenv("TEST_PR", "1"))
