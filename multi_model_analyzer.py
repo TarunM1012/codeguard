@@ -62,33 +62,86 @@ List ONLY critical issues. Be concise. Format: "Issue: <description>". One issue
         return issues
     
     def find_consensus(self, ensemble_results, threshold=2):
-        """Find issues that multiple models agree on"""
-        all_issues = {}
+        """Find consensus using semantic similarity (embeddings)"""
+        from sentence_transformers import SentenceTransformer
+        from sklearn.metrics.pairwise import cosine_similarity
+        import numpy as np
         
-        # Collect all issues from all models
+        # Load lightweight embedding model
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Collect all issues with metadata
+        all_issues = []
         for model_name, analysis in ensemble_results.items():
             if isinstance(analysis, str) and not analysis.startswith("Error:"):
                 issues = self.extract_issues(analysis)
                 for issue in issues:
-                    # Normalize issue text (lowercase, basic cleaning)
-                    normalized = issue.lower().strip()
-                    
-                    if normalized not in all_issues:
-                        all_issues[normalized] = {
-                            "original": issue,
-                            "models": [],
-                            "count": 0
-                        }
-                    
-                    all_issues[normalized]["models"].append(model_name)
-                    all_issues[normalized]["count"] += 1
+                    all_issues.append({
+                        "text": issue,
+                        "model": model_name,
+                        "embedding": None
+                    })
         
-        # Filter to only issues where threshold+ models agree
-        consensus = [
-            data["original"] 
-            for data in all_issues.values() 
-            if data["count"] >= threshold
-        ]
+        if not all_issues:
+            return []
+        
+        # Generate embeddings
+        texts = [item["text"] for item in all_issues]
+        embeddings = model.encode(texts)
+        
+        # Add embeddings to issues
+        for i, item in enumerate(all_issues):
+            item["embedding"] = embeddings[i]
+        
+        # Group similar issues using clustering
+        grouped = []
+        used = set()
+        
+        for i, issue1 in enumerate(all_issues):
+            if i in used:
+                continue
+                
+            group = {
+                "issues": [issue1],
+                "models": {issue1["model"]},
+                "representative": issue1["text"]
+            }
+            
+            # Find similar issues
+            for j, issue2 in enumerate(all_issues[i+1:], start=i+1):
+                if j in used:
+                    continue
+                    
+                # Calculate cosine similarity
+                sim = cosine_similarity(
+                    [issue1["embedding"]], 
+                    [issue2["embedding"]]
+                )[0][0]
+                
+                # If similarity > 0.7, same issue
+                if sim > 0.7:
+                    group["issues"].append(issue2)
+                    group["models"].add(issue2["model"])
+                    used.add(j)
+            
+            used.add(i)
+            grouped.append(group)
+        
+        # Filter to consensus (2+ models)
+        consensus = []
+        for group in grouped:
+            if len(group["models"]) >= threshold:
+                # Extract core concept for category
+                words = group["representative"].lower().split()
+                key_words = [w for w in words if len(w) > 4][:3]
+                category = " ".join(key_words).title()
+                
+                consensus.append({
+                    "category": category,
+                    "models": list(group["models"]),
+                    "count": len(group["models"]),
+                    "example": group["representative"]
+                })
         
         return consensus
 
