@@ -13,7 +13,7 @@ analyzer = MultiModelAnalyzer()
 
 @app.get("/")
 def home():
-    """Health check"""
+    """Health check endpoint"""
     is_connected = ollama.test_connection()
     return {
         "status": "running",
@@ -22,7 +22,7 @@ def home():
 
 @app.post("/analyze")
 async def analyze_code(request: Request):
-    """Analyze code snippet"""
+    """Direct code analysis endpoint for testing"""
     data = await request.json()
     
     code = data.get("code", "")
@@ -48,25 +48,23 @@ List any issues found."""
 
 @app.post("/webhook")
 async def github_webhook(request: Request):
-    """Handle GitHub webhook for PR events"""
+    """Process GitHub webhook events for pull requests"""
     
-    # Get event type
+    # Extract event metadata from headers
     event = request.headers.get("X-GitHub-Event")
-    
-    # Parse payload
     payload = await request.json()
     
-    # Only handle PR events
+    # Filter: only process pull request events
     if event != "pull_request":
         return {"status": "ignored", "reason": f"Not a PR event: {event}"}
     
     action = payload.get("action")
     
-    # Only analyze when PR is opened or updated
+    # Filter: only analyze new PRs or updates to existing PRs
     if action not in ["opened", "synchronize"]:
         return {"status": "ignored", "reason": f"Action not relevant: {action}"}
     
-    # Extract PR info
+    # Extract pull request metadata
     pr_number = payload["pull_request"]["number"]
     repo = payload["repository"]["full_name"]
     
@@ -75,61 +73,66 @@ async def github_webhook(request: Request):
     except KeyError:
         commit_id = "unknown"
     
-    print(f"\n New PR event: {repo} #{pr_number} (commit: {commit_id[:7]})")
+    print(f"\nNew PR event: {repo} #{pr_number} (commit: {commit_id[:7]})")
     
-    # Get changed files
+    # Begin analysis process
     try:
         files = github.get_pr_files(repo, pr_number)
-        
         analyses = []
         
         for file in files:
-            # Only analyze code files
+            # Skip non-code files
             if not file['filename'].endswith(('.py', '.js', '.java', '.cpp', '.c', '.ts', '.jsx', '.tsx')):
                 continue
             
-            # Get the patch (diff)
+            # Skip files with no diff data
             patch = file.get('patch')
             if not patch:
                 continue
             
-            # Extract just the new code
+            # Extract only newly added code from the diff
             new_code = extract_added_code(patch)
             if not new_code.strip():
                 continue
             
             print(f"  Analyzing {file['filename']}...")
             
-            # Choose analysis mode based on config
-            mode = ANALYSIS_MODE  # TODO: Make this configurable later
+            # Select single-model or ensemble analysis based on config
+            mode = ANALYSIS_MODE
             
             if mode == "single":
+                # Fast path: single model analysis
                 result = analyzer.analyze_single(new_code, file['filename'], "deepseek")
                 analysis = result['analysis']
                 model_info = f"Model: {result['model']}"
             else:
-                # Ensemble mode
+                # Ensemble path: multi-model consensus
                 result = analyzer.analyze_ensemble(new_code, file['filename'])
                 
-                # DEBUG: Print what each model said
+                # Debug output: show individual model responses
                 print("\n  === ENSEMBLE RESULTS ===")
-                for model, analysis in result['results'].items():
+                for model, model_analysis in result['results'].items():
                     print(f"\n  {model.upper()}:")
-                    print(f"  {analysis[:300]}...")  # First 300 chars
+                    print(f"  {model_analysis[:300]}...")
                 print("\n  === END RESULTS ===\n")
                 
-                # Get consensus issues
+                # Apply consensus algorithm to find agreement between models
                 consensus = analyzer.find_consensus(result['results'], threshold=2)
                 
                 if consensus:
-                    analysis = "**Consensus Issues (2+ models agree):**\n\n" + "\n".join(f"• {issue}" for issue in consensus)
+                    # Format consensus results for display
+                    analysis = "**Consensus Issues (2+ models agree):**\n\n"
+                    for item in consensus:
+                        models_str = ", ".join(item["models"])
+                        analysis += f"• **{item['category']}** ({item['count']}/3 models: {models_str})\n"
+                        analysis += f"  _{item['example']}_\n\n"
                 else:
                     analysis = "No consensus issues found. Individual model results varied."
                 
                 model_info = f"Models: {', '.join(result['models'])}"
             
-            # Post comment to GitHub
-            comment_body = f"""##  CodeGuard Analysis
+            # Format comment for GitHub
+            comment_body = f"""## CodeGuard Analysis
 
 **File:** `{file['filename']}`  
 **{model_info}**
@@ -139,16 +142,17 @@ async def github_webhook(request: Request):
 ---
 *Powered by CodeGuard Multi-Model System*"""
             
+            # Post analysis as PR comment
             try:
                 github.post_pr_comment(repo, pr_number, comment_body)
-                print(f"     Posted comment for {file['filename']}")
+                print(f"    Posted comment for {file['filename']}")
                 
                 analyses.append({
                     "file": file['filename'],
                     "comment_posted": True
                 })
             except Exception as e:
-                print(f"     Failed to post comment: {e}")
+                print(f"    Failed to post comment: {e}")
                 analyses.append({
                     "file": file['filename'],
                     "comment_posted": False,
@@ -164,7 +168,7 @@ async def github_webhook(request: Request):
         }
     
     except Exception as e:
-        print(f" Error: {e}")
+        print(f"Error: {e}")
         return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
