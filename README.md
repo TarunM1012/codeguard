@@ -130,6 +130,8 @@ Traditional keyword matching sees three different issues. CodeGuard's semantic a
 3. Groups as single consensus issue
 4. Reports: "SQL Injection (3/3 models agree)"
 
+![alt text](image.png)
+
 ### Model Selection Rationale
 
 | Model | Strength | Use Case |
